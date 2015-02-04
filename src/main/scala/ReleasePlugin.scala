@@ -18,9 +18,12 @@ object ReleasePlugin extends Plugin {
     lazy val versionFile = SettingKey[File]("release-version-file")
     lazy val useGlobalVersion = SettingKey[Boolean]("release-use-global-version")
 
+
     lazy val versionControlSystem = SettingKey[Option[Vcs]]("release-vcs")
     lazy val publishArtifactsAction = TaskKey[Unit]("release-publish-artifacts-action", "The action that should be performed to publish artifacts")
 
+    lazy val inputReleaseVersion = AttributeKey[Option[String]]("release-input-release-version")
+    lazy val inputNextVersion = AttributeKey[Option[String]]("release-input-next-version")
     lazy val versions = AttributeKey[Versions]("release-versions")
     lazy val useDefaults = AttributeKey[Boolean]("release-use-defaults")
     lazy val skipTests = AttributeKey[Boolean]("release-skip-tests")
@@ -31,7 +34,12 @@ object ReleasePlugin extends Plugin {
     private val SkipTests = "skip-tests"
     private val CrossBuild = "cross"
     private val FailureCommand = "--failure--"
-    private val releaseParser = (Space ~> WithDefaults | Space ~> SkipTests | Space ~> CrossBuild).*
+    private val ReleaseVersion = "release-version"
+    private val NextVersion = "next-version"
+
+    private val releaseVersionParser = Space ~> ReleaseVersion ~> Space ~> StringBasic
+    private val nextVersionParser = Space ~> NextVersion ~> Space ~> StringBasic
+    private val releaseParser = (Space ~> WithDefaults | Space ~> SkipTests | Space ~> CrossBuild | releaseVersionParser | nextVersionParser).*
 
     val releaseCommand: Command = Command(releaseCommandKey)(_ => releaseParser) { (st, args) =>
       val extracted = Project.extract(st)
@@ -42,6 +50,11 @@ object ReleasePlugin extends Plugin {
         .put(useDefaults, args.contains(WithDefaults))
         .put(skipTests, args.contains(SkipTests))
         .put(cross, crossEnabled)
+        .put(inputReleaseVersion, Some(""))
+        .put(inputNextVersion, Some(""))
+
+      println(args.find(str => str.startsWith(ReleaseVersion)))
+      println(args.find(str => str.startsWith(NextVersion)))
 
       val initialChecks = releaseParts.map(_.check)
 
